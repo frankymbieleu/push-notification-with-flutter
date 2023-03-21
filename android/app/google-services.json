@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "831150321797",
+    "project_id": "push-notification-c515b",
+    "storage_bucket": "push-notification-c515b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831150321797:android:ed3c2c6314d0b3162af9ec",
+        "android_client_info": {
+          "package_name": "com.frankymbieleu.push_notification"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "831150321797-al0ffijfrq3lv1icklie91in0ind3o5h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-355njQeov02ZjsSEW75t6lx53C_iQZA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "831150321797-al0ffijfrq3lv1icklie91in0ind3o5h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
