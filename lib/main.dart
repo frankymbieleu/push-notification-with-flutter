@@ -1,11 +1,143 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:push_notification/push_notification_service.dart';
+import 'package:push_notification/push_notification_service.dart';
+import 'package:push_notification/second_page.dart';
 
-void main() {
+PushNotificationService pushNotificationService = PushNotificationService();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  pushNotificationService.initializeAndShow(message);
+  print('Handling a background message ${message.messageId}');
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  // Set the background messaging handler early on, as a named top-level function
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  if (!kIsWeb) {
+    pushNotificationService.setupFlutterNotifications();
+  }
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  FlutterLocalNotificationsPlugin? fltNotification;
+
+  Future<void> setupInteractedMessage() async {
+    // Get any messages which caused the application to open from
+    // a terminated state.
+    RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+
+    // If the message also contains a data property with a "type" of "chat",
+    // navigate to a chat screen
+    if (initialMessage != null) {
+      _handleMessage(initialMessage);
+    }
+
+    // Also handle any interaction when the app is in the background via a
+    // Stream listener
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+  }
+
+  void _handleMessage(RemoteMessage message) {
+    print("Is opennnnnnnnnnnnnnnnnnnnn");
+  }
+
+  PushNotificationService pushNotificationService = PushNotificationService();
+
+  @override
+  void initState() {
+    FirebaseMessaging.onMessageOpenedApp.listen((event) {
+
+    });
+    super.initState();
+    getToken();
+    pushNotificationService.initialise();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      setupInteractedMessage();
+    });
+
+  }
+
+  getToken() async {
+    String? token = await messaging.getToken();
+    messaging.subscribeToTopic("all");
+    print("Mon token");
+    print(token);
+    return token;
+  }
+
+  void initMessaging() {
+    var androidInit =
+        const AndroidInitializationSettings('@mipmap/logo'); //for logo
+
+    var initSetting = InitializationSettings(android: androidInit);
+    fltNotification = FlutterLocalNotificationsPlugin();
+    fltNotification?.initialize(initSetting);
+    var androidDetails = const AndroidNotificationDetails('1', 'channelName',
+        channelDescription: 'channelDescription',
+        playSound: true,
+        priority: Priority.high,
+        ongoing: true,
+        color: Colors.purple,
+        fullScreenIntent: true,
+        styleInformation: BigTextStyleInformation(''),
+        importance: Importance.max);
+
+    var generalNotificationDetails =
+        NotificationDetails(android: androidDetails);
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      RemoteNotification? notification = message.notification;
+      AndroidNotification? android = message.notification?.android;
+      if (notification != null && android != null) {
+        showMessage(notification, generalNotificationDetails);
+      }
+    });
+    FirebaseMessaging.onMessageOpenedApp.listen((event) {
+      if (event.data.containsKey("DETAIL_PAGE")) {
+        int id = int.parse(event.data["DETAIL_PAGE"]);
+        print("Je pars vers le detail de la page $id");
+        Navigator.push(context,
+            MaterialPageRoute(builder: (builder) => const SecondPage()));
+      }
+    });
+    try {
+      FirebaseMessaging.onBackgroundMessage((message) {
+        RemoteNotification? notification = message.notification;
+        AndroidNotification? android = message.notification?.android;
+        if (notification != null && android != null) {
+          showMessage(notification, generalNotificationDetails);
+        }
+        return Future.value();
+      });
+    } catch (err) {
+      // Dont do anything
+    }
+  }
+
+  void showMessage(RemoteNotification notification,
+      NotificationDetails generalNotificationDetails) {
+    fltNotification?.show(notification.hashCode, notification.title,
+        notification.body, generalNotificationDetails);
+  }
 
   // This widget is the root of your application.
   @override
