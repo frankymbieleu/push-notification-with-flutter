@@ -5,15 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class PushNotificationService {
-  final fcm = FirebaseMessaging.instance;
-
   @pragma('vm:entry-point')
   Future<void> _firebaseMessagingBackgroundHandler(
       RemoteMessage message) async {
     await initializeAndShow(message);
-    // If you're going to use other Firebase services in the background, such as Firestore,
-    // make sure you call `initializeApp` before using other Firebase services.
-    print('Handling a background message ${message.messageId}');
   }
 
   Future<void> initializeAndShow(RemoteMessage message) async {
@@ -21,7 +16,6 @@ class PushNotificationService {
     showFlutterNotification(message);
   }
 
-  /// Create a [AndroidNotificationChannel] for heads up notifications
   late AndroidNotificationChannel channel;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -38,18 +32,11 @@ class PushNotificationService {
           'This channel is used for important notifications.', // description
       importance: Importance.high,
     );
-
-    /// Create an Android Notification Channel.
-    ///
-    /// We use this channel in the `AndroidManifest.xml` file to override the
-    /// default FCM channel to enable heads up notifications.
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
 
-    /// Update the iOS foreground notification presentation options to allow
-    /// heads up notifications.
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
       alert: true,
@@ -67,7 +54,7 @@ class PushNotificationService {
         const AndroidInitializationSettings('@mipmap/logo'); //for logo
 
     var initSetting = InitializationSettings(android: androidInit);
-    flutterLocalNotificationsPlugin.initialize(initSetting );
+    flutterLocalNotificationsPlugin.initialize(initSetting);
     var androidDetails = const AndroidNotificationDetails('1', 'channelName',
         channelDescription: 'channelDescription',
         playSound: true,
@@ -75,6 +62,7 @@ class PushNotificationService {
         ongoing: true,
         color: Colors.purple,
         //fullScreenIntent: true,
+
         styleInformation: BigTextStyleInformation(""),
         importance: Importance.max);
 
@@ -86,10 +74,7 @@ class PushNotificationService {
     }
   }
 
-  /// Initialize the [FlutterLocalNotificationsPlugin] package.
-
   Future initialise() async {
-    /// foreground handler
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       showFlutterNotification(message);
     });
