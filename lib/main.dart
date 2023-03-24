@@ -19,13 +19,54 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('Handling a background message ${message.messageId}');
 }
 
+AndroidNotificationChannel? channel;
+
+FlutterLocalNotificationsPlugin? flutterLocalNotificationsPlugin;
+late FirebaseMessaging messaging;
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  Map<String, String> data = jsonDecode(notificationResponse.payload ?? "");
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
+  messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(
+    alert: true,
+    announcement: false,
+    badge: true,
+    carPlay: false,
+    criticalAlert: false,
+    provisional: false,
+    sound: true,
+  );
+  final fcmToken = await messaging.getToken();
+  print(fcmToken);
+  await messaging.subscribeToTopic('all');
   if (!kIsWeb) {
-    pushNotificationService.setupFlutterNotifications();
+    channel = const AndroidNotificationChannel(
+        'flutter_notification', // id
+        'flutter_notification_title', // title
+        importance: Importance.high,
+        enableLights: true,
+        enableVibration: true,
+        showBadge: true,
+        playSound: true);
+    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    var android = const AndroidInitializationSettings('@mipmap/logo');
+    final initSettings = InitializationSettings(android: android);
+    await flutterLocalNotificationsPlugin!.initialize(initSettings,
+        onDidReceiveNotificationResponse: notificationTapBackground,
+        onDidReceiveBackgroundNotificationResponse: notificationTapBackground);
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   runApp(const MyApp());
@@ -43,6 +84,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -74,46 +116,16 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-  FlutterLocalNotificationsPlugin? fltNotification;
-
-  Future<void> setupInteractedMessage() async {
-    RemoteMessage? initialMessage =
-        await FirebaseMessaging.instance.getInitialMessage();
-    /*   if (initialMessage != null) {
-      _handleMessage(initialMessage);
-    }*/
-
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
-  }
-
-  void _handleMessage(RemoteMessage message) {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (builder) => const SecondPage()));
-  }
-
   PushNotificationService pushNotificationService = PushNotificationService();
 
   @override
   void initState() {
     super.initState();
-    getToken();
     pushNotificationService.initialise();
-    FirebaseMessaging.instance
-        .getInitialMessage()
-        .then((RemoteMessage? message) {
-      if (message != null) {
-        _handleMessage(const RemoteMessage());
-      }
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      Navigator.push(
+          context, MaterialPageRoute(builder: (builder) => const SecondPage()));
     });
-    setupInteractedMessage();
-  }
-
-  getToken() async {
-    String? token = await messaging.getToken();
-    messaging.subscribeToTopic("all");
-    print("Mon token");
-    print(token);
   }
 
   @override
@@ -142,59 +154,5 @@ class _MyHomePageState extends State<MyHomePage> {
         child: const Icon(Icons.add),
       ), //
     );
-  }
-
-  void initMessaging() {
-    var androidInit =
-        const AndroidInitializationSettings('@mipmap/logo'); //for logo
-
-    var initSetting = InitializationSettings(android: androidInit);
-    fltNotification = FlutterLocalNotificationsPlugin();
-    fltNotification?.initialize(initSetting);
-    var androidDetails = const AndroidNotificationDetails('1', 'channelName',
-        channelDescription: 'channelDescription',
-        playSound: true,
-        priority: Priority.high,
-        ongoing: true,
-        color: Colors.purple,
-        fullScreenIntent: true,
-        styleInformation: BigTextStyleInformation(''),
-        importance: Importance.max);
-
-    var generalNotificationDetails =
-        NotificationDetails(android: androidDetails);
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
-      if (notification != null && android != null) {
-        showMessage(notification, generalNotificationDetails);
-      }
-    });
-    FirebaseMessaging.onMessageOpenedApp.listen((event) {
-      if (event.data.containsKey("DETAIL_PAGE")) {
-        int id = int.parse(event.data["DETAIL_PAGE"]);
-        print("Je pars vers le detail de la page $id");
-        Navigator.push(context,
-            MaterialPageRoute(builder: (builder) => const SecondPage()));
-      }
-    });
-    try {
-      FirebaseMessaging.onBackgroundMessage((message) {
-        RemoteNotification? notification = message.notification;
-        AndroidNotification? android = message.notification?.android;
-        if (notification != null && android != null) {
-          showMessage(notification, generalNotificationDetails);
-        }
-        return Future.value();
-      });
-    } catch (err) {
-      // Dont do anything
-    }
-  }
-
-  void showMessage(RemoteNotification notification,
-      NotificationDetails generalNotificationDetails) {
-    fltNotification?.show(notification.hashCode, notification.title,
-        notification.body, generalNotificationDetails);
   }
 }
